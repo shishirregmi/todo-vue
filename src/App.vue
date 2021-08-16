@@ -8,30 +8,28 @@
             <input
               type="text"
               class="form-control add-todo"
-              placeholder="Add todo"
+              placeholder="Add task"
               v-model="name"
               @keyup.enter="addTask"
             />
-            <button id="checkAll" class="btn btn-success">
-              Mark all as done
-            </button>
-
             <hr />
             <ul id="list-items" class="list-unstyled">
               <li class="ui-state-default" v-for="task of tasks" :key="task.id">
-                {{ task.name }}
-                <button
-                  class="remove-item btn btn-default btn-xs pull-right"
-                  v-on:click="deleteTask(task.id)"
-                >
-                  <i class="fa fa-trash-o" aria-hidden="true"></i>
-                </button>
-                <button
-                  class="remove-item btn btn-default btn-xs pull-right"
-                  v-on:click="doneTask(task.id)"
-                >
-                  <i class="fa fa-check" aria-hidden="true"></i>
-                </button>
+                <div v-if="!task.status">
+                  {{ task.name }}
+                  <button
+                    class="remove-item btn btn-default btn-xs pull-right"
+                    v-on:click="deleteTask(task.id)"
+                  >
+                    <i class="fa fa-trash-o" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    class="remove-item btn btn-default btn-xs pull-right"
+                    v-on:click="doneTask(task.id)"
+                  >
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                  </button>
+                </div>
               </li>
             </ul>
           </div>
@@ -40,21 +38,23 @@
           <div class="todolist">
             <h1>Already Done</h1>
             <ul id="done-items" class="list-unstyled">
-              <li v-for="task of tasks" :key="task.id">
-                {{ task.name }}
-                <button
-                  class="remove-item btn btn-default btn-xs pull-right"
-                  v-on:click="deleteTask(task.id)"
-                >
-                  <i class="fa fa-trash-o" aria-hidden="true"></i>
-                </button>
-                <button
-                  class="remove-item btn btn-default btn-xs pull-right"
-                  v-on:click="undoTask(task.id)"
-                >
-                  <i class="fa fa-undo" aria-hidden="true"></i>
-                </button>
-              </li>
+              <div v-for="task of tasks" :key="task.id">
+                <li v-if="task.status">
+                  {{ task.name }}
+                  <button
+                    class="remove-item btn btn-default btn-xs pull-right"
+                    v-on:click="deleteTask(task.id)"
+                  >
+                    <i class="fa fa-trash-o" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    class="remove-item btn btn-default btn-xs pull-right"
+                    v-on:click="undoTask(task.id)"
+                  >
+                    <i class="fa fa-undo" aria-hidden="true"></i>
+                  </button>
+                </li>
+              </div>
             </ul>
           </div>
         </div>
@@ -66,6 +66,8 @@
 <script>
 import axios from "axios";
 
+const url = "http://localhost:3000/tasks/";
+
 export default {
   name: "App",
 
@@ -73,21 +75,36 @@ export default {
     return {
       tasks: [],
       name: "",
+      status: false,
     };
   },
 
   methods: {
     async addTask() {
-      const result = await axios.post("http://localhost:3000/tasks", {
+      const result = await axios.post(url, {
         name: this.name,
+        status: false,
       });
-
       this.tasks = [...this.tasks, result.data];
       this.name = "";
     },
 
+    async doneTask(taskId) {
+      await axios.patch(url + taskId, { status: true }).then(() => {
+        const objIndex = this.tasks.findIndex((obj) => obj.id == taskId);
+        this.tasks[objIndex].status = true;
+      });
+    },
+
+    async undoTask(taskId) {
+      await axios.patch(url + taskId, { status: false }).then(() => {
+        const objIndex = this.tasks.findIndex((obj) => obj.id == taskId);
+        this.tasks[objIndex].status = false;
+      });
+    },
+
     async deleteTask(taskId) {
-      await axios.delete("http://localhost:3000/tasks/" + taskId).then(() => {
+      await axios.delete(url + taskId).then(() => {
         this.tasks.splice(
           this.tasks.findIndex(function (i) {
             return i.id === taskId;
@@ -100,7 +117,7 @@ export default {
 
   async created() {
     try {
-      const result = await axios.get("http://localhost:3000/tasks");
+      const result = await axios.get(url);
       this.tasks = result.data;
     } catch (e) {
       console.error(e);
@@ -127,17 +144,8 @@ body {
   padding-bottom: 20px;
   text-align: center;
 }
-.form-control {
-  border-radius: 0;
-}
 li.ui-state-default {
   background: #fff;
-  border: none;
-  border-bottom: 1px solid #ddd;
-}
-
-li.ui-state-default:last-child {
-  border-bottom: none;
 }
 
 .todo-footer {
@@ -147,20 +155,21 @@ li.ui-state-default:last-child {
 }
 #done-items li {
   padding: 10px 0;
-  border-bottom: 1px solid #ddd;
   text-decoration: line-through;
-}
-#done-items li:last-child {
-  border-bottom: none;
 }
 #list-items li {
   padding: 10px 0;
-  border-bottom: 1px solid #ddd;
-}
-#list-items li:last-child {
-  border-bottom: none;
 }
 #checkAll {
   margin-top: 10px;
+}
+
+.inp {
+  outline: 0;
+  border-width: 0 0 2px;
+  border-color: blue;
+}
+.inp:focus {
+  border-color: green;
 }
 </style>
